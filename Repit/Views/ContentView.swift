@@ -6,15 +6,16 @@ import SwiftUI
 
 struct ContentView: View {
     @Environment(RoutineStore.self) private var store
+    @Environment(ExerciseLibraryStore.self) private var library
     var body: some View {
         @Bindable var store = store
         TabView {
             Tab(L10n.text("My week"), systemImage: "square.grid.2x2") { WeekView() }
             Tab(L10n.text("Exercises"), systemImage: "dumbbell") { CatalogView() }
         }
-        .alert(L10n.text("Your routines"), isPresented: Binding(get: { store.errorMessage != nil }, set: { if !$0 { store.errorMessage = nil } })) {
-            Button(L10n.text("Got it"), role: .cancel) { store.errorMessage = nil }
-        } message: { Text(store.errorMessage ?? "") }
+        .alert(L10n.text("Your data"), isPresented: Binding(get: { store.errorMessage != nil || library.errorMessage != nil }, set: { if !$0 { store.errorMessage = nil; library.errorMessage = nil } })) {
+            Button(L10n.text("Got it"), role: .cancel) { store.errorMessage = nil; library.errorMessage = nil }
+        } message: { Text(store.errorMessage ?? library.errorMessage ?? "") }
     }
 }
 
@@ -77,9 +78,9 @@ struct WeekView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 25) {
             HStack {
-                HStack(spacing: 5) {
+                HStack(spacing: 10) {
+                    RepitSymbol().frame(width: 27, height: 29)
                     Text("repit").font(.system(size: 29, weight: .heavy, design: .rounded)).tracking(-1.5)
-                    Circle().fill(Theme.lime).frame(width: 7, height: 7).offset(y: 8)
                 }
                 Spacer()
                 Button { showsAbout = true } label: {
@@ -184,6 +185,7 @@ struct WeekView: View {
 }
 
 struct CatalogView: View {
+    @Environment(ExerciseLibraryStore.self) private var library
     @Environment(\.openURL) private var openURL
     @State private var query = ""
     @State private var muscle = L10n.text("All")
@@ -193,10 +195,10 @@ struct CatalogView: View {
                 VStack(alignment: .leading, spacing: 22) {
                     Eyebrow(text: L10n.text("Your movement library"))
                     Text(L10n.text("Find your\nnext exercise.")).font(.system(size: 34, weight: .bold, design: .rounded)).tracking(-1)
-                    Text(L10n.text("%ld exercises · Tap to see the technique on YouTube.", ExerciseCatalog.all.count))
+                    Text(L10n.text("%ld exercises · Tap to see the technique on YouTube.", library.all.count))
                         .font(.caption).foregroundStyle(Theme.muted)
-                    MuscleFilter(selection: $muscle)
-                    let results = ExerciseCatalog.search(query, muscle: muscle)
+                    MuscleFilter(selection: $muscle, categories: library.muscles)
+                    let results = library.search(query, muscle: muscle)
                     if results.isEmpty { ContentUnavailableView.search(text: query) }
                     ForEach(results) { item in
                         Button { openURL(item.exercise.demonstrationURL) } label: {
@@ -211,6 +213,7 @@ struct CatalogView: View {
                                 Image(systemName: "play.circle").font(.title3).foregroundStyle(Theme.muted)
                             }.padding(14).background(Theme.surface, in: RoundedRectangle(cornerRadius: 20))
                         }.buttonStyle(.plain).accessibilityLabel(L10n.text("%@, %@, %@. See technique on YouTube", item.name, item.muscle, item.equipment))
+                            .accessibilityIdentifier("libraryExercise.\(item.name)")
                     }
                 }.padding(24)
             }.background(Theme.background)
@@ -222,15 +225,16 @@ struct CatalogView: View {
 
 struct MuscleFilter: View {
     @Binding var selection: String
+    var categories: [String] = ExerciseCatalog.muscles
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                ForEach(ExerciseCatalog.muscles, id: \.self) { muscle in
+                ForEach(categories, id: \.self) { muscle in
                     Button { selection = muscle } label: {
                         Text(muscle).font(.caption.weight(.semibold)).padding(.horizontal, 16).padding(.vertical, 12)
                             .foregroundStyle(selection == muscle ? Theme.background : Theme.muted)
                             .background(selection == muscle ? Theme.lime : Theme.elevated, in: Capsule())
-                    }.buttonStyle(.plain)
+                    }.buttonStyle(.plain).accessibilityIdentifier("muscleFilter.\(ExerciseCatalog.categoryIdentifier(muscle))")
                 }
             }
         }

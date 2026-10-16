@@ -12,15 +12,44 @@ enum Weekday: Int, Codable, CaseIterable, Identifiable {
     static var today: Self { Self(rawValue: (Calendar.current.component(.weekday, from: Date()) + 5) % 7)! }
 }
 
+enum ExerciseMeasurement: String, Codable, CaseIterable, Identifiable {
+    case repetitions, time
+    var id: String { rawValue }
+    var title: String { self == .repetitions ? L10n.text("Repetitions") : L10n.text("Time") }
+}
+
 struct Exercise: Codable, Identifiable, Equatable {
     var id = UUID()
     var name: String
     var muscle: String = L10n.text("Custom")
     var sets: Int = 3
     var reps: Int = 12
+    var measurement: ExerciseMeasurement = .repetitions
+    var durationSeconds: Int = 30
     var weight: Double = 0
     var videoURL: String = ""
     var weightLabel: String { weight == 0 ? L10n.text("No added weight") : "\(weight.formatted(.number.precision(.fractionLength(0...2)))) kg" }
+    var targetLabel: String {
+        measurement == .time ? L10n.text("%ld s", durationSeconds) : L10n.text("%ld reps", reps)
+    }
+    var prescriptionLabel: String { "\(sets) × \(targetLabel) · \(weightLabel)" }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, name, muscle, sets, reps, measurement, durationSeconds, weight, videoURL
+    }
+
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        id = try values.decode(UUID.self, forKey: .id)
+        name = try values.decode(String.self, forKey: .name)
+        muscle = try values.decodeIfPresent(String.self, forKey: .muscle) ?? L10n.text("Custom")
+        sets = try values.decodeIfPresent(Int.self, forKey: .sets) ?? 3
+        reps = try values.decodeIfPresent(Int.self, forKey: .reps) ?? 12
+        measurement = try values.decodeIfPresent(ExerciseMeasurement.self, forKey: .measurement) ?? .repetitions
+        durationSeconds = try values.decodeIfPresent(Int.self, forKey: .durationSeconds) ?? 30
+        weight = try values.decodeIfPresent(Double.self, forKey: .weight) ?? 0
+        videoURL = try values.decodeIfPresent(String.self, forKey: .videoURL) ?? ""
+    }
     var demonstrationURL: URL {
         if let url = Self.youtubeURL(videoURL) { return url }
         var components = URLComponents(string: "https://www.youtube.com/results")!
@@ -116,8 +145,13 @@ struct CatalogExercise: Identifiable {
     let muscle: String
     let equipment: String
     var videoURL = ""
+    var template: Exercise? = nil
     var id: String { name }
-    var exercise: Exercise { Exercise(name: name, muscle: muscle, videoURL: videoURL) }
+    var exercise: Exercise {
+        var result = template ?? Exercise(name: name, muscle: muscle, videoURL: videoURL)
+        result.id = UUID()
+        return result
+    }
 }
 
 enum ExerciseCatalog {
@@ -156,11 +190,43 @@ enum ExerciseCatalog {
         .init(name: "Jumping jacks", muscle: "Cardio", equipment: L10n.text("Bodyweight"))
     ]
     static let muscles = [L10n.text("All"), L10n.text("Chest"), L10n.text("Back"), L10n.text("Legs"), L10n.text("Glutes"), L10n.text("Shoulders"), L10n.text("Arms"), "Core", "Cardio"]
-    static func search(_ query: String, muscle: String = L10n.text("All")) -> [CatalogExercise] {
-        all.filter { item in
-            (muscle == L10n.text("All") || item.muscle == muscle) &&
-            (query.isEmpty || "\(item.name) \(item.muscle) \(item.equipment)".folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current).contains(query.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current)))
+    static let muscleKeys = ["Chest", "Back", "Legs", "Glutes", "Shoulders", "Arms", "Core", "Cardio", "Custom"]
+
+    static func normalized(_ value: String) -> String {
+        value.split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
+            .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: L10n.locale)
+    }
+
+    static func canonicalMuscle(_ value: String, among categories: [String] = []) -> String {
+        let trimmed = value.split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
+        guard !trimmed.isEmpty, normalized(trimmed) != normalized(L10n.text("All")) else { return L10n.text("Custom") }
+        if let key = muscleKeys.first(where: { normalized($0) == normalized(trimmed) || normalized(L10n.text($0)) == normalized(trimmed) }) {
+            return L10n.text(key)
         }
+        return categories.first { normalized($0) == normalized(trimmed) } ?? trimmed
+    }
+
+    static func categoryIdentifier(_ category: String) -> String {
+        let key = muscleKeys.first { normalized(L10n.text($0)) == normalized(category) }
+        return normalized(key ?? category)
+    }
+
+    static func search(_ query: String, muscle: String = L10n.text("All"), in exercises: [CatalogExercise] = all) -> [CatalogExercise] {
+        exercises.filter { item in
+            (muscle == L10n.text("All") || normalized(item.muscle) == normalized(muscle)) &&
+            (query.isEmpty || normalized("\(item.name) \(item.muscle) \(item.equipment)").contains(normalized(query)))
+        }
+    }
+}
+
+// Keep the memberwise initializer while decoding older saves without measurement fields.
+extension Exercise {
+    init(name: String, muscle: String = L10n.text("Custom"), sets: Int = 3, reps: Int = 12,
+         measurement: ExerciseMeasurement = .repetitions, durationSeconds: Int = 30,
+         weight: Double = 0, videoURL: String = "") {
+        self.name = name; self.muscle = muscle; self.sets = sets; self.reps = reps
+        self.measurement = measurement; self.durationSeconds = durationSeconds
+        self.weight = weight; self.videoURL = videoURL
     }
 }
 

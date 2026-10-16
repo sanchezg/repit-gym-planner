@@ -1,0 +1,5 @@
+<!-- Copyright (C) 2026 gsanz.dev; GNU GPL version 3 only. See LICENSE and ATTRIBUTION.md. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 600" fill="none">
+  <title>repit symbol</title>
+  <path fill="#CCF56B" fill-rule="evenodd" d="M64 0 L282 0 C458 0 548 78 548 214 C548 304 508 366 438 400 L548 540 C570 568 550 600 516 600 L474 600 C455 600 442 592 430 576 L306 416 L132 416 L132 536 C132 576 108 600 68 600 L64 600 C24 600 0 576 0 536 L0 64 C0 24 24 0 64 0 Z M132 132 L276 132 C366 132 408 158 408 214 C408 268 368 284 276 284 L132 284 Z"/>
+</svg>

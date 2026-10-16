@@ -12,6 +12,16 @@ enum Theme {
     static let muted = Color(red: 0.57, green: 0.62, blue: 0.58)
 }
 
+struct RepitSymbol: View {
+    var body: some View {
+        GeometryReader { geometry in
+            Path(BrandMark.path(in: CGRect(origin: .zero, size: geometry.size)))
+                .fill(Theme.lime, style: FillStyle(eoFill: true))
+        }
+        .accessibilityHidden(true)
+    }
+}
+
 struct PrimaryButton: View {
     let title: String
     var icon: String = "plus"
@@ -48,13 +58,13 @@ struct ExerciseRow: View {
                 }
                 VStack(alignment: .leading, spacing: 6) {
                     Text(exercise.name).font(.subheadline.weight(.semibold)).foregroundStyle(.white)
-                    Text("\(exercise.sets) × \(exercise.reps) reps  ·  \(exercise.weightLabel)")
+                    Text(exercise.prescriptionLabel)
                         .font(.caption).foregroundStyle(Theme.muted)
                 }
                 Spacer(minLength: 4)
                 Image(systemName: "play.circle").font(.title3).foregroundStyle(Theme.muted)
             }.padding(.vertical, 7).contentShape(Rectangle())
         }.buttonStyle(.plain)
-            .accessibilityLabel(L10n.text("%@, %ld sets of %ld, %@. %@", exercise.name, exercise.sets, exercise.reps, exercise.weightLabel, exercise.videoURL.isEmpty ? L10n.text("Search YouTube for a demonstration") : L10n.text("Watch demonstration on YouTube")))
+            .accessibilityLabel(L10n.text("%@, %ld sets of %@, %@. %@", exercise.name, exercise.sets, exercise.targetLabel, exercise.weightLabel, exercise.videoURL.isEmpty ? L10n.text("Search YouTube for a demonstration") : L10n.text("Watch demonstration on YouTube")))
     }
 }

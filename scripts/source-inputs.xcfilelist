@@ -6,6 +6,8 @@ $(SRCROOT)/LICENSING.md
 $(SRCROOT)/README.md
 $(SRCROOT)/Repit
 $(SRCROOT)/Repit/Models
+$(SRCROOT)/Repit/Models/BrandMark.swift
+$(SRCROOT)/Repit/Models/ExerciseLibraryStore.swift
 $(SRCROOT)/Repit/Models/Localization.swift
 $(SRCROOT)/Repit/Models/RoutineStore.swift
 $(SRCROOT)/Repit/Models/Workout.swift
@@ -16,6 +18,8 @@ $(SRCROOT)/Repit/Resources/Assets.xcassets/AppIcon.appiconset
 $(SRCROOT)/Repit/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon.png
 $(SRCROOT)/Repit/Resources/Assets.xcassets/AppIcon.appiconset/Contents.json
 $(SRCROOT)/Repit/Resources/Assets.xcassets/Contents.json
+$(SRCROOT)/Repit/Resources/Brand
+$(SRCROOT)/Repit/Resources/Brand/RepitSymbol.svg
 $(SRCROOT)/Repit/Resources/es.lproj
 $(SRCROOT)/Repit/Resources/es.lproj/Localizable.strings
 $(SRCROOT)/Repit/Views
@@ -32,8 +36,12 @@ $(SRCROOT)/Repit.xcodeproj/xcshareddata/xcschemes/Repit.xcscheme
 $(SRCROOT)/Tests
 $(SRCROOT)/Tests/ModelTests.swift
 $(SRCROOT)/UITests
+$(SRCROOT)/UITests/ExerciseLibraryUITests.swift
 $(SRCROOT)/UITests/RepitUITests.swift
 $(SRCROOT)/screenshots
+$(SRCROOT)/screenshots/exercise-library.png
+$(SRCROOT)/screenshots/exercise-repetitions.png
+$(SRCROOT)/screenshots/exercise-time.png
 $(SRCROOT)/screenshots/my-week.png
 $(SRCROOT)/scripts
 $(SRCROOT)/scripts/generate-icon.swift

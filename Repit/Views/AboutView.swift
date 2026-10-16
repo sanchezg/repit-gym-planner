@@ -11,7 +11,10 @@ struct AboutView: View {
         NavigationStack {
             Form {
                 Section(L10n.text("Credits")) {
-                    Text("repit").font(.system(.title2, design: .rounded).bold())
+                    HStack(spacing: 12) {
+                        RepitSymbol().frame(width: 30, height: 32)
+                        Text("repit").font(.system(.title2, design: .rounded).bold())
+                    }.padding(.vertical, 6)
                     Text("Copyright © 2026 gsanz.dev").textSelection(.enabled)
                     Text(L10n.text("Original project copyright notice. Modified versions may identify their contributions separately."))
                         .font(.footnote).foregroundStyle(Theme.muted)

@@ -107,7 +107,7 @@ struct BlockEditor: View {
                         Button { exerciseEditor = exercise } label: {
                             VStack(alignment: .leading, spacing: 6) {
                                 Text(exercise.name).foregroundStyle(.primary)
-                                Text("\(exercise.sets) × \(exercise.reps) reps · \(exercise.weightLabel)").font(.caption).foregroundStyle(Theme.muted)
+                                Text(exercise.prescriptionLabel).font(.caption).foregroundStyle(Theme.muted)
                             }.padding(.vertical, 6)
                         }
                     }.onDelete { block.exercises.remove(atOffsets: $0) }
@@ -145,6 +145,7 @@ struct BlockEditor: View {
 
 struct ExerciseComposer: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(ExerciseLibraryStore.self) private var library
     @State var exercise: Exercise
     let onSave: (Exercise) -> Void
     @State private var configuring = false
@@ -153,6 +154,7 @@ struct ExerciseComposer: View {
     @State private var weight = ""
     @State private var confirmDiscard = false
     @State private var original: Exercise?
+    @State private var saveFailure: String?
     private var parsedWeight: Double? {
         if weight.trimmingCharacters(in: .whitespaces).isEmpty { return 0 }
         guard let number = Double(weight.replacingOccurrences(of: ",", with: ".")), number.isFinite, number >= 0, number <= 10_000 else { return nil }
@@ -181,8 +183,10 @@ struct ExerciseComposer: View {
                         Button(L10n.text("Done")) {
                             exercise.weight = parsedWeight ?? 0
                             exercise.name = exercise.name.trimmingCharacters(in: .whitespacesAndNewlines)
+                            exercise.muscle = ExerciseCatalog.canonicalMuscle(exercise.muscle, among: library.muscles)
                             exercise.videoURL = exercise.videoURL.trimmingCharacters(in: .whitespacesAndNewlines)
-                            onSave(exercise); dismiss()
+                            if library.saveCustom(exercise) { onSave(exercise); dismiss() }
+                            else { saveFailure = library.errorMessage; library.errorMessage = nil }
                         }.fontWeight(.bold).disabled(!valid).accessibilityIdentifier("saveExercise")
                     }
                 }
@@ -194,6 +198,9 @@ struct ExerciseComposer: View {
                 }
             }
             .interactiveDismissDisabled(changed)
+            .alert(L10n.text("Unable to save"), isPresented: Binding(get: { saveFailure != nil }, set: { if !$0 { saveFailure = nil } })) {
+                Button(L10n.text("Got it"), role: .cancel) { saveFailure = nil }
+            } message: { Text(saveFailure ?? "") }
             .confirmationDialog(L10n.text("Discard this exercise?"), isPresented: $confirmDiscard, titleVisibility: .visible) {
                 Button(L10n.text("Discard changes"), role: .destructive) { dismiss() }
             }
@@ -206,10 +213,10 @@ struct ExerciseComposer: View {
                 Button { exercise.name = query; configuring = true } label: { Label(L10n.text("Enter an exercise manually"), systemImage: "square.and.pencil") }.accessibilityIdentifier("manualExercise")
             }
             Section {
-                MuscleFilter(selection: $muscle).listRowBackground(Color.clear).listRowInsets(EdgeInsets())
+                MuscleFilter(selection: $muscle, categories: library.muscles).listRowBackground(Color.clear).listRowInsets(EdgeInsets())
             }
             Section(L10n.text("Shared catalog")) {
-                let results = ExerciseCatalog.search(query, muscle: muscle)
+                let results = library.search(query, muscle: muscle)
                 if results.isEmpty { Text(L10n.text("No matches. You can enter it manually.")).foregroundStyle(Theme.muted) }
                 ForEach(results) { item in
                     Button {
@@ -233,11 +240,32 @@ struct ExerciseComposer: View {
         Form {
             Section(L10n.text("Exercise")) {
                 TextField(L10n.text("Exercise name"), text: $exercise.name).accessibilityIdentifier("exerciseName")
-                TextField(L10n.text("Muscle group"), text: $exercise.muscle)
+                HStack {
+                    TextField(L10n.text("Muscle group"), text: $exercise.muscle).accessibilityIdentifier("exerciseMuscle")
+                    Menu {
+                        ForEach(library.muscles.dropFirst(), id: \.self) { category in
+                            Button(category) { exercise.muscle = category }
+                        }
+                    } label: { Image(systemName: "chevron.down").frame(width: 44, height: 44) }
+                        .accessibilityLabel(L10n.text("Choose muscle group"))
+                }
+                Text(L10n.text("Custom exercises are saved to your library when you tap Done."))
+                    .font(.caption).foregroundStyle(Theme.muted)
             }
             Section {
                 Stepper(L10n.text("%ld sets", exercise.sets), value: $exercise.sets, in: 1...30)
-                Stepper(L10n.text("%ld repetitions", exercise.reps), value: $exercise.reps, in: 1...200)
+                Picker(L10n.text("Measure by"), selection: $exercise.measurement) {
+                    ForEach(ExerciseMeasurement.allCases) { measurement in
+                        Text(measurement.title).tag(measurement).accessibilityIdentifier("measurement.\(measurement.rawValue)")
+                    }
+                }.pickerStyle(.segmented).accessibilityIdentifier("exerciseMeasurement")
+                if exercise.measurement == .repetitions {
+                    Stepper(L10n.text("%ld repetitions", exercise.reps), value: $exercise.reps, in: 1...200)
+                        .accessibilityIdentifier("exerciseRepetitions")
+                } else {
+                    Stepper(L10n.text("Time per set: %ld s", exercise.durationSeconds), value: $exercise.durationSeconds, in: 5...3600, step: 5)
+                        .accessibilityIdentifier("exerciseDuration")
+                }
                 HStack {
                     Text(L10n.text("Weight"))
                     Spacer()

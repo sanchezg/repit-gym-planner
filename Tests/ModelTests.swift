@@ -74,6 +74,51 @@ import Foundation
             let storedValue = try JSONDecoder().decode(String.self, from: encoded)
             precondition(storedValue == kind.rawValue, "New saves must use English identifiers")
         }
-        print("All model checks passed: persistence, edits, deletion, corruption protection, failed writes, catalog search, video URLs, Tabata boundaries, circuit totals.")
+        let libraryFile = temp.appending(path: "exercises.json")
+        let library = ExerciseLibraryStore(fileURL: libraryFile)
+        var timed = Exercise(name: "Custom wall sit", muscle: "  legs  ", sets: 4, measurement: .time, durationSeconds: 45, weight: 12.5)
+        precondition(library.saveCustom(timed))
+        precondition(library.customExercises[0].muscle == L10n.text("Legs"), "Existing categories must be reused")
+        let reloadedLibrary = ExerciseLibraryStore(fileURL: libraryFile)
+        let template = reloadedLibrary.search("wall sit", muscle: L10n.text("Legs"))[0]
+        precondition(template.exercise.measurement == .time && template.exercise.durationSeconds == 45)
+        precondition(template.exercise.weight == 12.5 && template.exercise.sets == 4)
+        precondition(template.exercise.id != template.exercise.id, "Each insertion needs a fresh exercise ID")
+        timed.name = " CUSTOM  WALL SIT "
+        timed.durationSeconds = 60
+        precondition(library.saveCustom(timed) && library.customExercises.count == 1, "Names are deduplicated regardless of case or whitespace")
+        precondition(library.customExercises[0].durationSeconds == 60)
+        precondition(library.saveCustom(Exercise(name: ExerciseCatalog.all[0].name.uppercased())))
+        precondition(library.all.count == ExerciseCatalog.all.count + 1, "Built-in exercises must not be duplicated")
+        precondition(library.saveCustom(Exercise(name: "Custom stretch", muscle: "Mobility")))
+        precondition(library.saveCustom(Exercise(name: "Another stretch", muscle: " mobility ")))
+        precondition(library.muscles.filter { $0 == "Mobility" }.count == 1)
+        precondition(library.search("stretch", muscle: "Mobility").count == 2)
+        precondition(ExerciseCatalog.canonicalMuscle(" \(L10n.text("Glutes").uppercased()) ") == L10n.text("Glutes"))
+        precondition(ExerciseCatalog.canonicalMuscle("") == L10n.text("Custom"))
+
+        let encodedTimed = try JSONEncoder().encode(timed)
+        precondition(tryDecodeExercise(encodedTimed) == timed, "Timed exercise settings must round-trip")
+        var legacyExercise = try JSONSerialization.jsonObject(with: encodedTimed) as! [String: Any]
+        legacyExercise.removeValue(forKey: "measurement")
+        legacyExercise.removeValue(forKey: "durationSeconds")
+        let decodedLegacy = try JSONDecoder().decode(Exercise.self, from: JSONSerialization.data(withJSONObject: legacyExercise))
+        precondition(decodedLegacy.measurement == .repetitions && decodedLegacy.reps == timed.reps)
+        precondition(decodedLegacy.durationSeconds == 30 && decodedLegacy.weight == timed.weight)
+        precondition(timed.targetLabel.contains("60") && !timed.targetLabel.contains("reps"))
+
+        let corruptLibraryFile = temp.appending(path: "corrupt-exercises.json")
+        try original.write(to: corruptLibraryFile)
+        let corruptLibrary = ExerciseLibraryStore(fileURL: corruptLibraryFile)
+        precondition(corruptLibrary.errorMessage != nil && !corruptLibrary.saveCustom(timed))
+        let preservedLibrary = try Data(contentsOf: corruptLibraryFile)
+        precondition(preservedLibrary == original)
+        let unavailableLibrary = ExerciseLibraryStore(fileURL: file.appending(path: "exercises.json"))
+        precondition(!unavailableLibrary.saveCustom(timed) && unavailableLibrary.customExercises.isEmpty)
+        print("All model checks passed, including custom library persistence, category matching, deduplication, timed exercises, and legacy saves.")
+    }
+
+    private static func tryDecodeExercise(_ data: Data) -> Exercise? {
+        try? JSONDecoder().decode(Exercise.self, from: data)
     }
 }

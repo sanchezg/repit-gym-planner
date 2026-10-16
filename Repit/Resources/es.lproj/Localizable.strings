@@ -202,3 +202,15 @@
 "About repit" = "Acerca de repit";
 "Credits and license" = "Créditos y licencia";
 "The legal text could not be opened in this build." = "No se pudo abrir el texto legal de esta compilación.";
+"Repetitions" = "Repeticiones";
+"Time" = "Tiempo";
+"%ld s" = "%ld s";
+"%ld reps" = "%ld reps";
+"Your data" = "Tus datos";
+"Choose muscle group" = "Elegir grupo muscular";
+"Custom exercises are saved to your library when you tap Done." = "Los ejercicios personalizados se guardan en tu catálogo al tocar Listo.";
+"Measure by" = "Medir por";
+"Time per set: %ld s" = "Tiempo por serie: %ld s";
+"Your custom exercise library couldn’t be read. The original file is preserved. Reopen the app to try again." = "No pudimos leer tu catálogo de ejercicios personalizados. El archivo original se conserva. Volvé a abrir la app para intentar de nuevo.";
+"Your custom exercise couldn’t be saved. Check available storage and try again." = "No se pudo guardar tu ejercicio personalizado. Revisá el espacio disponible e intentá de nuevo.";
+"%@, %ld sets of %@, %@. %@" = "%@, %ld series de %@, %@. %@";
